@@ -13,9 +13,29 @@ A block that changes the time of day or the weather.
   (the block remembers it), then press Activate.
 - **Redstone:** a redstone pulse fires the selected effect once, on the rising edge. Holding the signal on does not
   fire again; turn it off and on for the next use.
-- **Time only moves forward.** The vane jumps to the next sunrise (tick 23000 of the day, when the sun reaches the
+- **Sequence of a use:**
+  1. **Activate** (button or redstone pulse): the cost is paid, the server-wide cooldown starts, and one chat
+     message announces it ("TunnelRat117 used a Weather Vane: changing the weather to Clear").
+  2. **Charge** for `chargeSeconds` (default 3): particles spiral up from the vane, more and tighter as the charge
+     completes, with a rising chime.
+  3. **Release:** a column of particles shoots from the vane up to 64 blocks into the sky for about a second, with
+     a beacon sound (thunder for Thunder). The effect applies now.
+  4. **Sweep** (time effects): the time fast-forwards over `animationSeconds` (default 3) so the sun, moon and stars
+     visibly cross the sky. The server sends the time every tick during the sweep.
+
+  Colors: warm gold for time, white and light blue for Clear, blue for Rain, purple with electric sparks for
+  Thunder. Particles and sounds are vanilla and sent by the server to players within normal particle range, so
+  clients need nothing extra; `showEffects = false` turns them off.
+- **One at a time:** while any vane on the server is charging or sweeping, every vane refuses to activate and its GUI
+  says "Charging" or "Changing the sky".
+- **Breaking the vane mid-charge** does not cancel the use: it was paid for, so the effect still applies when the
+  charge ends (only the particles stop). The same holds if its chunk unloads. The pending charge and sweep are saved
+  with the world; if the server stops during either, the effect is finished at once (no charge, no sweep) on the
+  first tick after the world loads, so the world never stays half changed.
+- **Time only moves forward.** The vane moves to the next sunrise (tick 23000 of the day, when the sun reaches the
   horizon), noon (6000), sunset (12000) or midnight (18000). The day count never goes back, unlike `/time set`.
-- **Weather** is set the way `/weather` does it, with the same random durations.
+  `animateTime = false` jumps there at once instead of sweeping.
+- **Weather** is set the way `/weather` does it, with the same random durations; rain fades in and out as usual.
 - **Cost per use:** Forge Energy if the internal buffer holds enough, otherwise one **Sky Shard** from its slot,
   otherwise it refuses. Hoppers and pipes can insert Sky Shards (they cannot take them out) and energy cables can
   charge it. Vanilla has no energy source, so Sky Shards are the standalone path. `requireCatalyst = false` makes
@@ -46,8 +66,8 @@ neighbors only when its output changes. In dimensions without weather (the Nethe
 mode.
 
 **Automatic clear weather:** put a Rain Detector (Rain mode) next to a Weather Vane set to Clear. When rain
-starts, the detector turns on, the vane fires once and clears the sky. When the rain fades, the detector turns off,
-which does not fire the vane.
+starts, the detector turns on and the vane charges (the rain keeps falling meanwhile), then releases and clears the
+sky. When the rain fades, the detector turns off, which does not fire the vane.
 
 ## Recipes
 
@@ -101,6 +121,10 @@ Concepts inspired by, not copied from: Draconic Evolution (time and weather cont
 | `timeWeather.allowWeather` | `true` | Allow weather changes |
 | `timeWeather.cooldownSeconds` | `60` | Seconds between uses, shared by every vane on the server (0 = no cooldown) |
 | `timeWeather.announceInChat` | `true` | Chat message naming who changed the time or weather |
+| `timeWeather.chargeSeconds` | `3.0` | Charge before the effect is released, 0.0 to 30.0 (0 = at once) |
+| `timeWeather.animateTime` | `true` | Sweep the time forward instead of jumping |
+| `timeWeather.animationSeconds` | `3.0` | Length of the sweep, the same for any distance, 0.5 to 20.0 |
+| `timeWeather.showEffects` | `true` | Charge and release particles and sounds |
 | `timeWeather.requireCatalyst` | `true` | Each use costs a Sky Shard or energy; `false` makes it free |
 | `timeWeather.energyPerUse` | `10000` | FE per use when the buffer holds enough (0 = Sky Shards only) |
 | `timeWeather.energyCapacity` | `100000` | Size of the energy buffer (ten uses) |

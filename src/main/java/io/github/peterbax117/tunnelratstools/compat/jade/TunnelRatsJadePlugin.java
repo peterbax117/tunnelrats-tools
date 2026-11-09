@@ -4,6 +4,7 @@ import io.github.peterbax117.tunnelratstools.TunnelRatsTools;
 import io.github.peterbax117.tunnelratstools.weathervane.WeatherEffect;
 import io.github.peterbax117.tunnelratstools.weathervane.WeatherVaneBlock;
 import io.github.peterbax117.tunnelratstools.weathervane.WeatherVaneBlockEntity;
+import io.github.peterbax117.tunnelratstools.weathervane.WeatherVaneStatus;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
@@ -18,7 +19,7 @@ import snownee.jade.api.WailaPlugin;
 import snownee.jade.api.config.IPluginConfig;
 
 /**
- * Jade overlay for the Weather Vane: selected effect and the shared cooldown. Jade finds this class through the
+ * Jade overlay for the Weather Vane: selected effect, charging or changing the sky, and the shared cooldown. Jade finds this class through the
  * annotation, so it is never loaded when Jade is not installed.
  */
 @WailaPlugin
@@ -45,6 +46,7 @@ public class TunnelRatsJadePlugin implements IWailaPlugin
             if(accessor.getBlockEntity() instanceof WeatherVaneBlockEntity vane) {
                 data.putString("Effect", vane.selected().getSerializedName());
                 data.putLong("Cooldown", (vane.cooldownRemainingTicks() + 19) / 20);
+                data.putString("Phase", vane.busyStatus().name());
             }
         }
 
@@ -55,6 +57,8 @@ public class TunnelRatsJadePlugin implements IWailaPlugin
             WeatherEffect effect = WeatherEffect.byName(data.getString("Effect"), WeatherEffect.CLEAR);
             tooltip.add(Component.translatable("gui.tunnelrats_tools.weather_vane.selected", effect.displayName()));
             long cooldown = data.getLong("Cooldown");
+            WeatherVaneStatus phase = WeatherVaneStatus.byName(data.getString("Phase"));
+            if(phase != WeatherVaneStatus.READY) tooltip.add(phase.message());
             if(cooldown > 0) tooltip.add(Component.translatable("status.tunnelrats_tools.weather_vane.cooldown", cooldown));
         }
 

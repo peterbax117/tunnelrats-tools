@@ -8,6 +8,8 @@ import io.github.peterbax117.tunnelratstools.raindetector.RainDetectorMode;
 import io.github.peterbax117.tunnelratstools.weathervane.WeatherEffect;
 import io.github.peterbax117.tunnelratstools.weathervane.WeatherVaneBlock;
 import io.github.peterbax117.tunnelratstools.weathervane.WeatherVaneBlockEntity;
+import io.github.peterbax117.tunnelratstools.weathervane.WeatherVaneData;
+import io.github.peterbax117.tunnelratstools.weathervane.WeatherVaneSettings;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTest;
@@ -158,16 +160,27 @@ public class RainDetectorGameTests
         ServerLevel level = helper.getLevel();
         setWeather(level, Weather.RAIN);
         BlockPos vanePos = new BlockPos(3, 1, 4);
-        // Cooldown 0, so a second trigger would succeed if the falling edge fired one.
-        WeatherVaneBlockEntity vane = WeatherVaneGameTests.placeVane(helper, vanePos, WeatherVaneGameTests.settings(true, 0));
+        WeatherVaneData.get(level.getServer()).reset(level.getServer());
+        // Cooldown 0, so a second trigger would succeed if the falling edge fired one. A 1 second charge with effects.
+        WeatherVaneSettings settings = new WeatherVaneSettings(true, true, true, 0, false, true, 1000, 1.0, false, 1.0, true);
+        WeatherVaneBlockEntity vane = WeatherVaneGameTests.placeVane(helper, vanePos, settings);
         vane.catalyst().setStackInSlot(0, new ItemStack(ModRegistries.SKY_SHARD.get(), 2));
         vane.setSelected(WeatherEffect.CLEAR);
         helper.setBlock(vanePos.east(), detector(RainDetectorMode.RAIN));
         BlockPos detectorPos = vanePos.east();
+        long[] fired = new long[1];
 
         helper.startSequence()
+                // The shard is paid when the detector's pulse starts the charge.
                 .thenWaitUntil(() -> helper.assertValueEqual(vane.catalyst().getStackInSlot(0).getCount(), 1, "shards after the detector fired"))
-                .thenExecute(() -> helper.assertFalse(level.getLevelData().isRaining(), "the vane should have cleared the weather"))
+                .thenExecute(() -> {
+                    fired[0] = level.getGameTime();
+                    helper.assertTrue(WeatherVaneData.get(level.getServer()).charging(), "the vane should be charging");
+                })
+                .thenExecuteAfter(15, () -> helper.assertTrue(level.getLevelData().isRaining() && level.isRaining(), "rain stays visible while charging"))
+                .thenWaitUntil(() -> helper.assertFalse(level.getLevelData().isRaining(), "the vane should clear the weather after the charge"))
+                .thenExecute(() -> helper.assertTrue(level.getGameTime() - fired[0] >= 19,
+                        "weather cleared " + (level.getGameTime() - fired[0]) + " ticks after the pulse, before the 20 tick charge ended"))
                 // Rain fades over a few seconds; the detector turns off when it does (the falling edge).
                 .thenWaitUntil(() -> helper.assertValueEqual(output(helper, detectorPos), 0, "detector output after the rain stops"))
                 .thenIdle(30)

@@ -43,6 +43,10 @@ public class SmokeGameTests
         helper.assertValueEqual(TunnelRatsConfig.TIME_WEATHER_ANNOUNCE_IN_CHAT.getDefault(), true, "timeWeather.announceInChat default");
         helper.assertValueEqual(TunnelRatsConfig.TIME_WEATHER_REQUIRE_CATALYST.getDefault(), true, "timeWeather.requireCatalyst default");
         helper.assertValueEqual(TunnelRatsConfig.TIME_WEATHER_ENERGY_PER_USE.getDefault(), 10000, "timeWeather.energyPerUse default");
+        helper.assertValueEqual(TunnelRatsConfig.TIME_WEATHER_CHARGE_SECONDS.getDefault(), 3.0, "timeWeather.chargeSeconds default");
+        helper.assertValueEqual(TunnelRatsConfig.TIME_WEATHER_ANIMATE_TIME.getDefault(), true, "timeWeather.animateTime default");
+        helper.assertValueEqual(TunnelRatsConfig.TIME_WEATHER_ANIMATION_SECONDS.getDefault(), 3.0, "timeWeather.animationSeconds default");
+        helper.assertValueEqual(TunnelRatsConfig.TIME_WEATHER_SHOW_EFFECTS.getDefault(), true, "timeWeather.showEffects default");
         helper.assertValueEqual(TunnelRatsConfig.TIME_WEATHER_ENERGY_CAPACITY.getDefault(), 100000, "timeWeather.energyCapacity default");
         helper.assertValueEqual(TunnelRatsConfig.RAIN_DETECTOR_ENABLED.getDefault(), true, "rainDetector.enabled default");
         helper.assertValueEqual(TunnelRatsConfig.CRATE_ENABLED.getDefault(), true, "crate.enabled default");
