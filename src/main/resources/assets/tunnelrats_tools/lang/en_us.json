@@ -1,0 +1,16 @@
+{
+    "itemGroup.tunnelrats_tools": "TunnelRat's Tools",
+
+    "tunnelrats_tools.configuration.title": "TunnelRat's Tools Configuration",
+    "tunnelrats_tools.configuration.section.tunnelrats.tools.common.toml": "Common Settings",
+    "tunnelrats_tools.configuration.section.tunnelrats.tools.common.toml.title": "TunnelRat's Tools: Common Settings",
+    "tunnelrats_tools.configuration.timeWeather": "Time and Weather Control",
+    "tunnelrats_tools.configuration.timeWeather.enabled": "Enabled",
+    "tunnelrats_tools.configuration.timeWeather.allowTime": "Allow Time Changes",
+    "tunnelrats_tools.configuration.timeWeather.allowWeather": "Allow Weather Changes",
+    "tunnelrats_tools.configuration.timeWeather.cooldownSeconds": "Cooldown (Seconds)",
+    "tunnelrats_tools.configuration.timeWeather.announceInChat": "Announce in Chat",
+    "tunnelrats_tools.configuration.timeWeather.requireCatalyst": "Require Catalyst",
+    "tunnelrats_tools.configuration.crate": "Storage Crate",
+    "tunnelrats_tools.configuration.crate.enabled": "Enabled"
+}
