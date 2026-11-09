@@ -1,0 +1,6 @@
+{
+    "variants": {
+        "powered=false": { "model": "tunnelrats_tools:block/weather_vane" },
+        "powered=true": { "model": "tunnelrats_tools:block/weather_vane" }
+    }
+}

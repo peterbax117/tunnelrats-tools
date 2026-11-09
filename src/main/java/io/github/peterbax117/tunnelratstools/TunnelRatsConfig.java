@@ -13,14 +13,14 @@ public final class TunnelRatsConfig
     private static final ModConfigSpec.Builder BUILDER = new ModConfigSpec.Builder();
 
     static {
-        BUILDER.comment("Time and weather control block: changes the time of day or the weather on use.")
+        BUILDER.comment("Weather Vane: changes the time of day or the weather on use.")
                 .translation(key("timeWeather"))
                 .push("timeWeather");
     }
 
     public static final ModConfigSpec.BooleanValue TIME_WEATHER_ENABLED = BUILDER
-            .comment("Enable the time and weather control block. When false, the block stays registered so worlds",
-                    "keep loading, but its recipe and its use are disabled.")
+            .comment("Enable the Weather Vane and the Sky Shard. When false, both stay registered so worlds",
+                    "keep loading, but their recipes are disabled and the block refuses to activate.")
             .translation(key("timeWeather.enabled"))
             .define("enabled", true);
 
@@ -35,7 +35,7 @@ public final class TunnelRatsConfig
             .define("allowWeather", true);
 
     public static final ModConfigSpec.IntValue TIME_WEATHER_COOLDOWN_SECONDS = BUILDER
-            .comment("Seconds a block must wait between two uses. 0 disables the cooldown.")
+            .comment("Seconds between two uses, shared by every Weather Vane on the server. 0 disables the cooldown.")
             .translation(key("timeWeather.cooldownSeconds"))
             .defineInRange("cooldownSeconds", 60, 0, 86400);
 
@@ -45,10 +45,38 @@ public final class TunnelRatsConfig
             .define("announceInChat", true);
 
     public static final ModConfigSpec.BooleanValue TIME_WEATHER_REQUIRE_CATALYST = BUILDER
-            .comment("Each use costs one catalyst item (or Forge Energy when the block is powered).",
+            .comment("Each use costs one Sky Shard, or Forge Energy when the internal buffer holds enough.",
                     "When false, using the block is free.")
             .translation(key("timeWeather.requireCatalyst"))
             .define("requireCatalyst", true);
+
+    // 10,000 FE is about two minutes of output from a small early generator (80 FE/t), so the energy path costs
+    // real infrastructure, comparable to crafting a Sky Shard by hand.
+    public static final ModConfigSpec.IntValue TIME_WEATHER_ENERGY_PER_USE = BUILDER
+            .comment("Forge Energy one use costs when the internal buffer holds enough. Otherwise one Sky Shard",
+                    "is used. 0 turns the energy path off, so only Sky Shards are accepted.")
+            .translation(key("timeWeather.energyPerUse"))
+            .defineInRange("energyPerUse", 10000, 0, Integer.MAX_VALUE);
+
+    // Ten uses of buffer: a power network can charge it between uses, and it stays small enough that a full
+    // block is not a battery worth stealing.
+    public static final ModConfigSpec.IntValue TIME_WEATHER_ENERGY_CAPACITY = BUILDER
+            .comment("Size of the Weather Vane's internal Forge Energy buffer. Applies to blocks loaded after a change.")
+            .translation(key("timeWeather.energyCapacity"))
+            .defineInRange("energyCapacity", 100000, 0, Integer.MAX_VALUE);
+
+    static {
+        BUILDER.pop();
+        BUILDER.comment("Rain Detector: a redstone signal from the dimension's weather.")
+                .translation(key("rainDetector"))
+                .push("rainDetector");
+    }
+
+    public static final ModConfigSpec.BooleanValue RAIN_DETECTOR_ENABLED = BUILDER
+            .comment("Enable the Rain Detector. When false, detectors stay registered so worlds keep loading, but",
+                    "they output no signal and their recipe is disabled.")
+            .translation(key("rainDetector.enabled"))
+            .define("enabled", true);
 
     static {
         BUILDER.pop();
@@ -70,6 +98,11 @@ public final class TunnelRatsConfig
     public static final ModConfigSpec SPEC = BUILDER.build();
 
     private TunnelRatsConfig() {}
+
+    /** The configured value, or the default before the config file is loaded (for example in early client code). */
+    public static <T> T value(ModConfigSpec.ConfigValue<T> option) {
+        return SPEC.isLoaded() ? option.get() : option.getDefault();
+    }
 
     private static String key(String path) {
         return TunnelRatsTools.MODID + ".configuration." + path;

@@ -1,0 +1,8 @@
+{
+    "parent": "minecraft:block/cube_bottom_top",
+    "textures": {
+        "top": "tunnelrats_tools:block/weather_vane_top",
+        "side": "tunnelrats_tools:block/weather_vane_side",
+        "bottom": "tunnelrats_tools:block/weather_vane_bottom"
+    }
+}

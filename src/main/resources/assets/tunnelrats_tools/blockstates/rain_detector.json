@@ -1,0 +1,10 @@
+{
+    "variants": {
+        "mode=rain,powered=false": { "model": "tunnelrats_tools:block/rain_detector_rain" },
+        "mode=rain,powered=true": { "model": "tunnelrats_tools:block/rain_detector_rain" },
+        "mode=thunder,powered=false": { "model": "tunnelrats_tools:block/rain_detector_thunder" },
+        "mode=thunder,powered=true": { "model": "tunnelrats_tools:block/rain_detector_thunder" },
+        "mode=clear,powered=false": { "model": "tunnelrats_tools:block/rain_detector_clear" },
+        "mode=clear,powered=true": { "model": "tunnelrats_tools:block/rain_detector_clear" }
+    }
+}

@@ -3,20 +3,82 @@
 A NeoForge 1.21.1 utility mod for modpacks: useful blocks found in large mods, available on their own without the
 large mod and its dependencies. One jar; each tool can be turned off in the config.
 
-**Status: in development.** This repository is the scaffold (registries, config, tests, CI). No tools are
-implemented yet.
+**Status: in development (0.1.0).** The Weather Vane and the Rain Detector are done; the storage crate is next.
 
-## Planned v1 tools
+## Weather Vane
 
-### Time and weather control block
+A block that changes the time of day or the weather.
 
-- Sets the time (sunrise, noon, sunset, midnight) or the weather (clear, rain, thunder).
-- A GUI selects the effect; a GUI button or a redstone pulse triggers it.
-- Each use costs a crafted catalyst item, or Forge Energy when the block is powered. The config can make it free.
-- Server controls: a cooldown between uses, a chat message naming who changed the time or weather, and separate
-  toggles for time and weather.
+- **Effects:** Sunrise, Noon, Sunset, Midnight; Clear, Rain, Thunder. Right-click opens the GUI: pick an effect
+  (the block remembers it), then press Activate.
+- **Redstone:** a redstone pulse fires the selected effect once, on the rising edge. Holding the signal on does not
+  fire again; turn it off and on for the next use.
+- **Time only moves forward.** The vane jumps to the next sunrise (tick 23000 of the day, when the sun reaches the
+  horizon), noon (6000), sunset (12000) or midnight (18000). The day count never goes back, unlike `/time set`.
+- **Weather** is set the way `/weather` does it, with the same random durations.
+- **Cost per use:** Forge Energy if the internal buffer holds enough, otherwise one **Sky Shard** from its slot,
+  otherwise it refuses. Hoppers and pipes can insert Sky Shards (they cannot take them out) and energy cables can
+  charge it. Vanilla has no energy source, so Sky Shards are the standalone path. `requireCatalyst = false` makes
+  it free.
+- **Cooldown:** one cooldown for the whole server, shared by every Weather Vane (time and weather are server-wide,
+  so more vanes must not mean more changes). It is saved with the world and counts game ticks.
+- **Announcement:** a chat message to everyone names who used it and what changed. For redstone it names the
+  player who placed the vane and says it was a redstone trigger.
+- **Where it works:** time changes are refused in dimensions with a fixed time (the Nether, the End); weather
+  changes are refused in dimensions without weather. The GUI shows the reason.
+- **Server authority:** the GUI sends only button clicks. The server checks every click: the player is in reach,
+  the block is still there, and the effect is allowed.
 
-### Storage crate
+## Rain Detector
+
+The weather counterpart of the daylight detector, a slab-height block that outputs a redstone signal. Right-click
+cycles three modes (shown on its top and in an action bar message):
+
+| Mode | Output |
+|---|---|
+| Rain | 15 while it rains or thunders, else 0 |
+| Thunder | 15 only while it thunders, else 0 |
+| Clear | 15 while it does not rain, else 0 |
+
+It reads the dimension's weather (the same rain and thunder the sky shows), not the biome or the sky above the
+block, so it also works in deserts, in snowy biomes and under a roof. It checks every second and updates its
+neighbors only when its output changes. In dimensions without weather (the Nether, the End) it outputs 0 in every
+mode.
+
+**Automatic clear weather:** put a Rain Detector (Rain mode) next to a Weather Vane set to Clear. When rain
+starts, the detector turns on, the vane fires once and clears the sky. When the rain fades, the detector turns off,
+which does not fire the vane.
+
+## Recipes
+
+All vanilla items; tags (`c:`) accept modded equivalents. Each recipe is a data file under
+`data/tunnelrats_tools/recipe/` and is disabled with its tool in the config.
+
+Weather Vane:
+
+```
+Gold Ingot    Daylight Detector  Gold Ingot
+Lapis Block   Clock              Lapis Block
+Obsidian      Diamond            Obsidian
+```
+
+Sky Shard (makes 2):
+
+```
+Glowstone Dust  Lapis Lazuli    Glowstone Dust
+Lapis Lazuli    Amethyst Shard  Lapis Lazuli
+Glowstone Dust  Lapis Lazuli    Glowstone Dust
+```
+
+Rain Detector (the bucket is returned):
+
+```
+Glass              Glass              Glass
+Redstone Dust      Water Bucket       Redstone Dust
+Smooth Stone Slab  Smooth Stone Slab  Smooth Stone Slab
+```
+
+## Planned: storage crate
 
 - Three tiers (54, 81 and 108 slots), upgraded in place with contents kept. Larger tiers scroll.
 - Keeps its contents when broken, as a shulker box does.
@@ -24,8 +86,9 @@ implemented yet.
 - Crates and shulker boxes cannot be stored inside a crate.
 - Hoppers and pipe mods can insert and extract items.
 
-Concept inspired by, not copied from: Draconic Evolution Celestial Manipulator, Actually Additions Storage Crates.
-All code, art, names and wording in this mod are original.
+Concepts inspired by, not copied from: Draconic Evolution (time and weather control) and Actually Additions
+(storage crates). All code, art, names and wording in this mod are original; the textures are drawn by
+`tools/generate_textures.py`.
 
 ## Configuration
 
@@ -33,17 +96,30 @@ All code, art, names and wording in this mod are original.
 
 | Key | Default | Meaning |
 |---|---|---|
-| `timeWeather.enabled` | `true` | Enable the time and weather control block |
+| `timeWeather.enabled` | `true` | Enable the Weather Vane and Sky Shard |
 | `timeWeather.allowTime` | `true` | Allow time changes |
 | `timeWeather.allowWeather` | `true` | Allow weather changes |
-| `timeWeather.cooldownSeconds` | `60` | Seconds between uses (0 = no cooldown) |
-| `timeWeather.announceInChat` | `true` | Chat message naming the player who changed time or weather |
-| `timeWeather.requireCatalyst` | `true` | Each use costs a catalyst item (or Forge Energy); `false` makes it free |
+| `timeWeather.cooldownSeconds` | `60` | Seconds between uses, shared by every vane on the server (0 = no cooldown) |
+| `timeWeather.announceInChat` | `true` | Chat message naming who changed the time or weather |
+| `timeWeather.requireCatalyst` | `true` | Each use costs a Sky Shard or energy; `false` makes it free |
+| `timeWeather.energyPerUse` | `10000` | FE per use when the buffer holds enough (0 = Sky Shards only) |
+| `timeWeather.energyCapacity` | `100000` | Size of the energy buffer (ten uses) |
+| `rainDetector.enabled` | `true` | Enable the Rain Detector |
 | `crate.enabled` | `true` | Enable the storage crate |
 
 Disabling a tool does not remove its blocks or items from the game, so existing worlds keep loading. Its recipes
-and its use are disabled instead.
+are removed and the blocks stop working: a disabled Weather Vane refuses to activate, a disabled Rain Detector
+outputs 0.
 
+## Integrations
+
+| Mod | Integration |
+|---|---|
+| Jade | Weather Vane overlay: selected effect and remaining cooldown |
+| JEI | Recipes show automatically (they are vanilla crafting recipes) |
+| CraftTweaker, KubeJS | Recipes are data files with common tags, so pack makers can replace them |
+| Energy mods | Weather Vane accepts Forge Energy from any cable or generator |
+| Hoppers, pipe mods | Insert Sky Shards into the Weather Vane |
 ## Standalone first
 
 Every tool works fully with no other mods installed. Integrations (JEI, Jade, CraftTweaker and KubeJS) only add

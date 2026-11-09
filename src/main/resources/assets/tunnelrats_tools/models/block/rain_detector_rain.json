@@ -1,0 +1,8 @@
+{
+    "parent": "tunnelrats_tools:block/rain_detector_base",
+    "textures": {
+        "top": "tunnelrats_tools:block/rain_detector_top_rain",
+        "side": "tunnelrats_tools:block/rain_detector_side",
+        "bottom": "tunnelrats_tools:block/rain_detector_bottom"
+    }
+}
