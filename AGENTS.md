@@ -10,8 +10,8 @@ harness and CI follow `peterbax117/angelring-pb`.
 
 ## Rules
 
-- **Original work only.** The tools are inspired by Draconic Evolution (Celestial Manipulator) and Actually
-  Additions (Storage Crates). Never copy code, textures, names or wording from those mods or any other.
+- **Original work only.** The tools reuse concepts from other mods (credited in README.md) but never their code,
+  textures, names or wording. Textures are drawn by `tools/generate_textures.py`; edit the script, never the PNGs.
 - **Standalone first.** Every feature works with no other mods installed. Integrations (JEI, Jade, CraftTweaker,
   KubeJS) only add behavior. Code that touches an optional mod lives in its own class, loaded only when that mod is
   present (`ModList.get().isLoaded(...)`, or a plugin class the other mod discovers itself).

@@ -42,6 +42,9 @@ public class SmokeGameTests
         helper.assertValueEqual(TunnelRatsConfig.TIME_WEATHER_COOLDOWN_SECONDS.getDefault(), 60, "timeWeather.cooldownSeconds default");
         helper.assertValueEqual(TunnelRatsConfig.TIME_WEATHER_ANNOUNCE_IN_CHAT.getDefault(), true, "timeWeather.announceInChat default");
         helper.assertValueEqual(TunnelRatsConfig.TIME_WEATHER_REQUIRE_CATALYST.getDefault(), true, "timeWeather.requireCatalyst default");
+        helper.assertValueEqual(TunnelRatsConfig.TIME_WEATHER_ENERGY_PER_USE.getDefault(), 10000, "timeWeather.energyPerUse default");
+        helper.assertValueEqual(TunnelRatsConfig.TIME_WEATHER_ENERGY_CAPACITY.getDefault(), 100000, "timeWeather.energyCapacity default");
+        helper.assertValueEqual(TunnelRatsConfig.RAIN_DETECTOR_ENABLED.getDefault(), true, "rainDetector.enabled default");
         helper.assertValueEqual(TunnelRatsConfig.CRATE_ENABLED.getDefault(), true, "crate.enabled default");
 
         // The loaded values are readable at runtime (a local config file may have changed them).
@@ -74,15 +77,15 @@ public class SmokeGameTests
 
     @GameTest(template = TEMPLATE)
     public static void craftTweakerScriptsRun(GameTestHelper helper) {
-        // src/crafttweaker/scripts/tunnelrats_tools_test.zs adds feather + gold block -> diamond. Without CraftTweaker
-        // that combination must not craft anything. Replace the probe with real recipe changes once the mod has items.
+        // src/crafttweaker/scripts/tunnelrats_tools_test.zs replaces the Sky Shard recipe with feather + gold block.
+        // Without CraftTweaker that combination must not craft anything.
         CraftingInput input = CraftingInput.of(2, 1, List.of(new ItemStack(Items.FEATHER), new ItemStack(Items.GOLD_BLOCK)));
         var recipe = helper.getLevel().getRecipeManager().getRecipeFor(RecipeType.CRAFTING, input, helper.getLevel());
         boolean crafttweaker = ModList.get().isLoaded("crafttweaker");
         helper.assertValueEqual(recipe.isPresent(), crafttweaker, "feather + gold block recipe present");
         if(crafttweaker) {
             ItemStack result = recipe.get().value().assemble(input, helper.getLevel().registryAccess());
-            helper.assertTrue(result.is(Items.DIAMOND), "Script recipe should make a diamond, made " + result);
+            helper.assertTrue(result.is(ModRegistries.SKY_SHARD.get()), "Script recipe should make a Sky Shard, made " + result);
         }
         helper.succeed();
     }

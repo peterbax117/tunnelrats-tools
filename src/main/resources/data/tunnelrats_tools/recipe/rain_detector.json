@@ -1,0 +1,17 @@
+{
+    "neoforge:conditions": [{ "type": "tunnelrats_tools:tool_enabled", "tool": "rain_detector" }],
+    "type": "minecraft:crafting_shaped",
+    "category": "redstone",
+    "pattern": [
+        "GGG",
+        "RWR",
+        "SSS"
+    ],
+    "key": {
+        "G": { "tag": "c:glass_blocks" },
+        "R": { "tag": "c:dusts/redstone" },
+        "W": { "item": "minecraft:water_bucket" },
+        "S": { "item": "minecraft:smooth_stone_slab" }
+    },
+    "result": { "id": "tunnelrats_tools:rain_detector", "count": 1 }
+}

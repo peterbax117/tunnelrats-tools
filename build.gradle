@@ -65,8 +65,9 @@ configurations {
 }
 
 dependencies {
-    // JEI and Jade are optional integrations. They are on the dev runtime only for now; add compileOnly API
-    // dependencies when the first plugin class is written, and load that class only when the mod is present.
+    // JEI and Jade are optional integrations. Code that uses them lives in compat classes that the other mod
+    // discovers itself (compat/jade/TunnelRatsJadePlugin), so they are never loaded when the mod is absent.
+    compileOnly "maven.modrinth:jade:${jade_version}"
     localRuntime "mezz.jei:jei-${minecraft_version}-neoforge:${jei_version}"
     localRuntime "maven.modrinth:jade:${jade_version}"
 }

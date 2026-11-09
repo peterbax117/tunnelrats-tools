@@ -1,0 +1,16 @@
+{
+    "neoforge:conditions": [{ "type": "tunnelrats_tools:tool_enabled", "tool": "time_weather" }],
+    "type": "minecraft:crafting_shaped",
+    "category": "misc",
+    "pattern": [
+        "YLY",
+        "LAL",
+        "YLY"
+    ],
+    "key": {
+        "Y": { "tag": "c:dusts/glowstone" },
+        "L": { "tag": "c:gems/lapis" },
+        "A": { "tag": "c:gems/amethyst" }
+    },
+    "result": { "id": "tunnelrats_tools:sky_shard", "count": 2 }
+}

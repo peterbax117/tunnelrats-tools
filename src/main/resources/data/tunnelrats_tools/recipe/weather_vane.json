@@ -1,0 +1,19 @@
+{
+    "neoforge:conditions": [{ "type": "tunnelrats_tools:tool_enabled", "tool": "time_weather" }],
+    "type": "minecraft:crafting_shaped",
+    "category": "redstone",
+    "pattern": [
+        "GDG",
+        "LCL",
+        "OXO"
+    ],
+    "key": {
+        "G": { "tag": "c:ingots/gold" },
+        "D": { "item": "minecraft:daylight_detector" },
+        "L": { "tag": "c:storage_blocks/lapis" },
+        "C": { "item": "minecraft:clock" },
+        "O": { "tag": "c:obsidians" },
+        "X": { "tag": "c:gems/diamond" }
+    },
+    "result": { "id": "tunnelrats_tools:weather_vane", "count": 1 }
+}
