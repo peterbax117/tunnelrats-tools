@@ -5,7 +5,7 @@ import io.github.peterbax117.tunnelratstools.ModRegistries;
 import io.github.peterbax117.tunnelratstools.weathervane.WeatherEffect;
 import io.github.peterbax117.tunnelratstools.weathervane.WeatherVaneBlock;
 import io.github.peterbax117.tunnelratstools.weathervane.WeatherVaneBlockEntity;
-import io.github.peterbax117.tunnelratstools.weathervane.WeatherVaneCooldown;
+import io.github.peterbax117.tunnelratstools.weathervane.WeatherVaneData;
 import io.github.peterbax117.tunnelratstools.weathervane.WeatherVaneLogic;
 import io.github.peterbax117.tunnelratstools.weathervane.WeatherVaneMenu;
 import io.github.peterbax117.tunnelratstools.weathervane.WeatherVaneSettings;
@@ -47,8 +47,9 @@ public class WeatherVaneGameTests
     private static final BlockPos VANE = new BlockPos(4, 1, 4);
     private static final int ENERGY_PER_USE = 1000;
 
+    /** No charge, instant time changes, no particles: the effect applies inside activate(). */
     static WeatherVaneSettings settings(boolean requireCatalyst, int cooldownSeconds) {
-        return new WeatherVaneSettings(true, true, true, cooldownSeconds, false, requireCatalyst, ENERGY_PER_USE);
+        return new WeatherVaneSettings(true, true, true, cooldownSeconds, false, requireCatalyst, ENERGY_PER_USE, 0, false, 1.0, false);
     }
 
     static WeatherVaneBlockEntity placeVane(GameTestHelper helper, BlockPos pos, WeatherVaneSettings settings) {
@@ -170,7 +171,7 @@ public class WeatherVaneGameTests
     public static void disallowedTimeAndWeatherAreRejected(GameTestHelper helper) {
         ServerLevel level = overworld(helper);
         WeatherVaneBlockEntity noTime = placeVane(helper, VANE,
-                new WeatherVaneSettings(true, false, true, 0, false, false, ENERGY_PER_USE));
+                new WeatherVaneSettings(true, false, true, 0, false, false, ENERGY_PER_USE, 0, false, 1.0, false));
         level.setDayTime(1000);
         noTime.setSelected(WeatherEffect.NOON);
         helper.assertValueEqual(noTime.activate(null), WeatherVaneStatus.TIME_DISABLED, "time with allowTime=false");
@@ -179,7 +180,7 @@ public class WeatherVaneGameTests
         helper.assertValueEqual(noTime.activate(null), WeatherVaneStatus.READY, "weather with allowTime=false");
 
         WeatherVaneBlockEntity noWeather = placeVane(helper, new BlockPos(2, 1, 2),
-                new WeatherVaneSettings(true, true, false, 0, false, false, ENERGY_PER_USE));
+                new WeatherVaneSettings(true, true, false, 0, false, false, ENERGY_PER_USE, 0, false, 1.0, false));
         noWeather.setSelected(WeatherEffect.RAIN);
         helper.assertValueEqual(noWeather.activate(null), WeatherVaneStatus.WEATHER_DISABLED, "weather with allowWeather=false");
         noWeather.setSelected(WeatherEffect.NOON);
@@ -189,7 +190,7 @@ public class WeatherVaneGameTests
 
     @GameTest(template = TEMPLATE)
     public static void disabledVaneRefuses(GameTestHelper helper) {
-        WeatherVaneBlockEntity vane = placeVane(helper, VANE, new WeatherVaneSettings(false, true, true, 0, false, false, ENERGY_PER_USE));
+        WeatherVaneBlockEntity vane = placeVane(helper, VANE, new WeatherVaneSettings(false, true, true, 0, false, false, ENERGY_PER_USE, 0, false, 1.0, false));
         ServerLevel level = overworld(helper);
         level.setDayTime(1000);
         vane.setSelected(WeatherEffect.NOON);
@@ -206,7 +207,7 @@ public class WeatherVaneGameTests
             helper.assertTrue(level != null, dimension.location() + " should exist on the test server");
             helper.assertValueEqual(WeatherVaneLogic.dimensionStatus(level, WeatherEffect.NOON), WeatherVaneStatus.FIXED_TIME, dimension.location() + " time");
             helper.assertValueEqual(WeatherVaneLogic.dimensionStatus(level, WeatherEffect.RAIN), WeatherVaneStatus.NO_WEATHER, dimension.location() + " weather");
-            helper.assertValueEqual(WeatherVaneLogic.check(level, WeatherEffect.CLEAR, settings(false, 0), 0), WeatherVaneStatus.NO_WEATHER, dimension.location() + " check");
+            helper.assertValueEqual(WeatherVaneLogic.check(level, WeatherEffect.CLEAR, settings(false, 0), 0, WeatherVaneStatus.READY), WeatherVaneStatus.NO_WEATHER, dimension.location() + " check");
         }
         helper.assertValueEqual(WeatherVaneLogic.dimensionStatus(server.overworld(), WeatherEffect.NOON), WeatherVaneStatus.READY, "overworld time");
         helper.assertValueEqual(WeatherVaneLogic.dimensionStatus(server.overworld(), WeatherEffect.THUNDER), WeatherVaneStatus.READY, "overworld weather");
@@ -263,7 +264,7 @@ public class WeatherVaneGameTests
     @GameTest(template = TEMPLATE)
     public static void menuValidatesEveryClick(GameTestHelper helper) {
         WeatherVaneBlockEntity vane = placeVane(helper, VANE,
-                new WeatherVaneSettings(true, true, false, 0, true, false, ENERGY_PER_USE));
+                new WeatherVaneSettings(true, true, false, 0, true, false, ENERGY_PER_USE, 0, false, 1.0, false));
         FakePlayer near = survivalPlayer(helper, ItemStack.EMPTY, new BlockPos(4, 1, 2), 0, 0);
         WeatherVaneMenu menu = new WeatherVaneMenu(1, near.getInventory(), vane);
 
@@ -310,7 +311,7 @@ public class WeatherVaneGameTests
 
     @GameTest(template = TEMPLATE, batch = "weather_vane_cooldown", timeoutTicks = 100)
     public static void cooldownIsSharedAndExpires(GameTestHelper helper) {
-        WeatherVaneCooldown.get(helper.getLevel().getServer()).reset();
+        WeatherVaneData.get(helper.getLevel().getServer()).reset(helper.getLevel().getServer());
         WeatherVaneBlockEntity first = placeVane(helper, VANE, settings(false, 1));
         WeatherVaneBlockEntity second = placeVane(helper, new BlockPos(2, 1, 2), settings(false, 1));
         first.setSelected(WeatherEffect.NOON);
@@ -320,7 +321,7 @@ public class WeatherVaneGameTests
         helper.assertValueEqual(second.activate(null), WeatherVaneStatus.COOLDOWN, "another vane during the cooldown");
         helper.runAfterDelay(21, () -> {
             helper.assertValueEqual(second.activate(null), WeatherVaneStatus.READY, "after the cooldown");
-            WeatherVaneCooldown.get(helper.getLevel().getServer()).reset();
+            WeatherVaneData.get(helper.getLevel().getServer()).reset(helper.getLevel().getServer());
             helper.succeed();
         });
     }

@@ -14,6 +14,8 @@ public enum WeatherVaneStatus
     WEATHER_DISABLED,
     FIXED_TIME,
     NO_WEATHER,
+    CHARGING,
+    ANIMATING,
     COOLDOWN,
     NO_FUEL;
 
@@ -25,5 +27,12 @@ public enum WeatherVaneStatus
 
     public static WeatherVaneStatus byIndex(int index) {
         return index >= 0 && index < VALUES.length ? VALUES[index] : DISABLED;
+    }
+
+    public static WeatherVaneStatus byName(String name) {
+        for(WeatherVaneStatus status : VALUES) {
+            if(status.name().equals(name)) return status;
+        }
+        return READY;
     }
 }

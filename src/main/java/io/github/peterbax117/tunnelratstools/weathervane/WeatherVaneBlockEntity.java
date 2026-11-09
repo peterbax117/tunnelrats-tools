@@ -102,8 +102,13 @@ public class WeatherVaneBlockEntity extends BlockEntity implements MenuProvider
 
     public long cooldownRemainingTicks() {
         if(!(level instanceof ServerLevel server)) return 0;
-        var cooldown = WeatherVaneCooldown.get(server.getServer());
-        return cooldown.remainingTicks(WeatherVaneCooldown.now(server.getServer()), settings().cooldownSeconds());
+        var data = WeatherVaneData.get(server.getServer());
+        return data.remainingTicks(WeatherVaneData.now(server.getServer()), settings().cooldownSeconds());
+    }
+
+    /** CHARGING or ANIMATING while a Weather Vane anywhere on the server is busy, otherwise READY. */
+    public WeatherVaneStatus busyStatus() {
+        return level instanceof ServerLevel server ? WeatherVaneData.get(server.getServer()).busyStatus() : WeatherVaneStatus.READY;
     }
 
     /** Whether the selected effect could fire now, without changing anything. */
@@ -113,15 +118,16 @@ public class WeatherVaneBlockEntity extends BlockEntity implements MenuProvider
 
     private WeatherVaneStatus status(WeatherVaneSettings settings) {
         if(level == null) return WeatherVaneStatus.DISABLED;
-        WeatherVaneStatus status = WeatherVaneLogic.check(level, selected, settings, cooldownRemainingTicks());
+        WeatherVaneStatus status = WeatherVaneLogic.check(level, selected, settings, cooldownRemainingTicks(), busyStatus());
         if(status == WeatherVaneStatus.READY && !canPay(settings)) return WeatherVaneStatus.NO_FUEL;
         return status;
     }
 
     /**
-     * Fires the selected effect if every check passes: pays the cost, applies the effect, starts the shared
-     * cooldown and announces it. {@code player} is the player who pressed Activate, or null for a redstone pulse.
-     * Returns READY when it fired, otherwise the reason it did not.
+     * Fires the selected effect if every check passes: pays the cost, starts the shared cooldown, announces it and
+     * starts the charge; the effect is released when the charge completes (see {@link WeatherVaneData}).
+     * {@code player} is the player who pressed Activate, or null for a redstone pulse. Returns READY when it
+     * started, otherwise the reason it did not.
      */
     public WeatherVaneStatus activate(@Nullable ServerPlayer player) {
         if(!(level instanceof ServerLevel server)) return WeatherVaneStatus.DISABLED;
@@ -130,11 +136,12 @@ public class WeatherVaneBlockEntity extends BlockEntity implements MenuProvider
         if(status != WeatherVaneStatus.READY) return status;
 
         pay(settings);
-        WeatherVaneLogic.apply(server, selected);
-        WeatherVaneCooldown.get(server.getServer()).markUsed(WeatherVaneCooldown.now(server.getServer()));
+        WeatherVaneData data = WeatherVaneData.get(server.getServer());
+        data.markUsed(WeatherVaneData.now(server.getServer()));
         if(settings.announceInChat()) {
             server.getServer().getPlayerList().broadcastSystemMessage(announcement(player), false);
         }
+        data.begin(server, worldPosition, selected, settings);
         TunnelRatsTools.LOGGER.info("Weather Vane at {} in {}: {} ({})", worldPosition, server.dimension().location(),
                 selected.getSerializedName(), player != null ? player.getGameProfile().getName() : "redstone");
         return WeatherVaneStatus.READY;

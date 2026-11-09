@@ -44,6 +44,30 @@ public final class TunnelRatsConfig
             .translation(key("timeWeather.announceInChat"))
             .define("announceInChat", true);
 
+    public static final ModConfigSpec.DoubleValue TIME_WEATHER_CHARGE_SECONDS = BUILDER
+            .comment("Seconds a Weather Vane charges (with a particle swirl) before its effect is released. The cost",
+                    "and the cooldown are taken when the charge starts. 0 releases at once.")
+            .translation(key("timeWeather.chargeSeconds"))
+            .defineInRange("chargeSeconds", 3.0, 0.0, 30.0);
+
+    public static final ModConfigSpec.BooleanValue TIME_WEATHER_ANIMATE_TIME = BUILDER
+            .comment("Fast-forward time changes so the sun and moon visibly sweep across the sky. When false, the",
+                    "time jumps at once.")
+            .translation(key("timeWeather.animateTime"))
+            .define("animateTime", true);
+
+    public static final ModConfigSpec.DoubleValue TIME_WEATHER_ANIMATION_SECONDS = BUILDER
+            .comment("How long a fast-forward takes, the same for any distance. Other Weather Vanes cannot be",
+                    "activated until it finishes.")
+            .translation(key("timeWeather.animationSeconds"))
+            .defineInRange("animationSeconds", 3.0, 0.5, 20.0);
+
+    public static final ModConfigSpec.BooleanValue TIME_WEATHER_SHOW_EFFECTS = BUILDER
+            .comment("Show the charge swirl and release beam particles and play their sounds. Vanilla particles",
+                    "and sounds only, sent to players within normal particle range.")
+            .translation(key("timeWeather.showEffects"))
+            .define("showEffects", true);
+
     public static final ModConfigSpec.BooleanValue TIME_WEATHER_REQUIRE_CATALYST = BUILDER
             .comment("Each use costs one Sky Shard, or Forge Energy when the internal buffer holds enough.",
                     "When false, using the block is free.")
