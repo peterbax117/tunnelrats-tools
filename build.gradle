@@ -1,0 +1,174 @@
+plugins {
+    id 'java-library'
+    id 'net.neoforged.moddev' version '2.0.148'
+    id 'me.modmuss50.mod-publish-plugin' version '2.2.1'
+    id 'idea'
+}
+
+version = "${minecraft_version}-${mod_version}"
+group = mod_group_id
+
+base {
+    archivesName = 'tunnelrats_tools'
+}
+
+java.toolchain.languageVersion = JavaLanguageVersion.of(21)
+
+repositories {
+    maven {
+        name = 'BlameJared (JEI, CraftTweaker)'
+        url = 'https://maven.blamejared.com'
+    }
+    exclusiveContent {
+        forRepository {
+            maven {
+                name = 'Modrinth (Jade)'
+                url = 'https://api.modrinth.com/maven'
+            }
+        }
+        filter {
+            includeGroup 'maven.modrinth'
+        }
+    }
+}
+
+neoForge {
+    version = project.neo_version
+
+    parchment {
+        mappingsVersion = project.parchment_mappings_version
+        minecraftVersion = project.parchment_minecraft_version
+    }
+
+    runs {
+        client {
+            client()
+        }
+        server {
+            server()
+            programArgument '--nogui'
+        }
+        configureEach {
+            logLevel = org.slf4j.event.Level.INFO
+        }
+    }
+
+    mods {
+        "${mod_id}" {
+            sourceSet(sourceSets.main)
+        }
+    }
+}
+
+configurations {
+    runtimeClasspath.extendsFrom localRuntime
+}
+
+dependencies {
+    // JEI and Jade are optional integrations. They are on the dev runtime only for now; add compileOnly API
+    // dependencies when the first plugin class is written, and load that class only when the mod is present.
+    localRuntime "mezz.jei:jei-${minecraft_version}-neoforge:${jei_version}"
+    localRuntime "maven.modrinth:jade:${jade_version}"
+}
+
+var generateModMetadata = tasks.register('generateModMetadata', ProcessResources) {
+    var replaceProperties = [
+            minecraft_version_range: minecraft_version_range,
+            neo_version            : neo_version,
+            loader_version_range   : loader_version_range,
+            mod_id                 : mod_id,
+            mod_name               : mod_name,
+            mod_license            : mod_license,
+            mod_version            : project.version,
+    ]
+    inputs.properties replaceProperties
+    expand replaceProperties
+    from 'src/main/templates'
+    into 'build/generated/sources/modMetadata'
+}
+sourceSets.main.resources.srcDir generateModMetadata
+neoForge.ideSyncTask generateModMetadata
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}
+
+// CurseForge and Modrinth release, run by .github/workflows/release.yml (see README "Releasing").
+// No CurseForge or Modrinth project exists yet: both project ids in gradle.properties are blank placeholders,
+// so this is always a dry run that writes to build/publishMods. release.yml also has its publish job disabled.
+// publishMods uploads to both sites; publishCurseforge and publishModrinth upload to one.
+def curseforgeProjectId = providers.gradleProperty('curseforge_project_id').getOrElse('')
+def modrinthProjectId = providers.gradleProperty('modrinth_project_id').getOrElse('')
+def curseforgeReady = !providers.environmentVariable('CURSEFORGE_TOKEN').getOrElse('').isEmpty() && !curseforgeProjectId.isEmpty()
+def modrinthReady = !providers.environmentVariable('MODRINTH_TOKEN').getOrElse('').isEmpty() && !modrinthProjectId.isEmpty()
+publishMods {
+    file = jar.archiveFile
+    displayName = "${mod_name} ${project.version}"
+    changelog = providers.environmentVariable('CHANGELOG').orElse('See https://github.com/peterbax117/tunnelrats-tools/releases')
+    type = BETA
+    modLoaders.add('neoforge')
+    dryRun = !curseforgeReady && !modrinthReady
+
+    curseforge {
+        accessToken = providers.environmentVariable('CURSEFORGE_TOKEN')
+        projectId = curseforgeProjectId
+        minecraftVersions.add(minecraft_version)
+        javaVersions.add(JavaVersion.VERSION_21)
+        client = true
+        server = true
+        optional('jei', 'jade')
+    }
+
+    modrinth {
+        accessToken = providers.environmentVariable('MODRINTH_TOKEN')
+        projectId = modrinthProjectId
+        minecraftVersions.add(minecraft_version)
+        optional('jei', 'jade')
+    }
+}
+
+// GameTests (src/gametest) and client tests (src/clienttest) use neoforge-mod-test-harness from a sibling
+// checkout, or from MOD_TEST_HARNESS_DIR (CI). Without it the mod still builds; only the test tasks are missing.
+def harnessDir = file(System.getenv('MOD_TEST_HARNESS_DIR') ?: '../neoforge-mod-test-harness')
+if(harnessDir.isDirectory()) {
+    apply from: new File(harnessDir, 'gradle/test-harness.gradle')
+
+    // Test configurations (see README):
+    //   default         JEI + Jade
+    //   -Pstandalone    no optional mods: the configuration every player has
+    //   -Pcrafttweaker  default plus CraftTweaker and a sample pack-maker script
+    def standalone = project.hasProperty('standalone')
+    def crafttweaker = project.hasProperty('crafttweaker')
+    def setup = standalone ? 'standalone' : (crafttweaker ? 'crafttweaker' : 'integrations')
+    dependencies {
+        if(!standalone) {
+            gametestRuntimeOnly "mezz.jei:jei-${minecraft_version}-neoforge:${jei_version}"
+            clienttestRuntimeOnly "mezz.jei:jei-${minecraft_version}-neoforge:${jei_version}"
+            gametestRuntimeOnly "maven.modrinth:jade:${jade_version}"
+            clienttestRuntimeOnly "maven.modrinth:jade:${jade_version}"
+        }
+        if(crafttweaker) {
+            gametestRuntimeOnly "com.blamejared.crafttweaker:CraftTweaker-neoforge-${minecraft_version}:${crafttweaker_version}"
+        }
+    }
+
+    // Tests check that the optional mods on the classpath match the selected setup.
+    neoForge.runs.configureEach {
+        if(name == 'gameTestServer' || name == 'clientTest') {
+            systemProperty 'tunnelrats_tools.test.setup', setup
+        }
+    }
+
+    // CraftTweaker reads scripts from <game dir>/scripts; the GameTest server runs in ./run.
+    def scriptSource = file('src/crafttweaker/scripts')
+    def scriptTarget = file('run/scripts')
+    tasks.matching { it.name == 'runGameTestServer' }.configureEach {
+        doFirst {
+            scriptTarget.mkdirs()
+            scriptSource.listFiles().each { f -> new File(scriptTarget, f.name).delete() }
+            if(crafttweaker) {
+                scriptSource.listFiles().each { f -> java.nio.file.Files.copy(f.toPath(), new File(scriptTarget, f.name).toPath()) }
+            }
+        }
+    }
+}

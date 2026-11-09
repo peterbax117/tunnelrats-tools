@@ -1,0 +1,89 @@
+name: Release
+
+# NOT ACTIVE YET. No CurseForge or Modrinth project exists for TunnelRat's Tools, so the publish job below is
+# disabled with `if: ${{ false }}`, and curseforge_project_id and modrinth_project_id in gradle.properties are blank
+# placeholders. Even with the job enabled, the "Check release inputs" step fails while either id or its token
+# secret is missing, and gradlew publishMods is a dry run. To activate: create both projects, set the ids in
+# gradle.properties, add the CURSEFORGE_TOKEN and MODRINTH_TOKEN repository secrets, then remove the `if` line.
+#
+# Once active: push a tag v<mod_version> (for example v0.1.0) to run the full test matrix and publish to CurseForge
+# and Modrinth. The tag message becomes the changelog.
+#
+# Run manually (Actions, Release, Run workflow) to publish the current mod_version to one site. A tag
+# v<mod_version> must already exist; its message is the changelog.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      target:
+        description: Where to publish the current mod_version
+        type: choice
+        options: [modrinth, curseforge, all]
+        default: all
+
+jobs:
+  test:
+    uses: ./.github/workflows/build.yml
+
+  publish:
+    # Disabled until the CurseForge and Modrinth projects exist (see the note at the top of this file).
+    if: ${{ false }}
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      TARGET: ${{ github.event_name == 'workflow_dispatch' && inputs.target || 'all' }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Check release inputs
+        env:
+          CURSEFORGE_TOKEN: ${{ secrets.CURSEFORGE_TOKEN }}
+          MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
+        run: |
+          prop() { grep "^$1=" gradle.properties | cut -d= -f2 | tr -d '\r'; }
+          tag="v$(prop mod_version)"
+          if [ "$GITHUB_EVENT_NAME" = "push" ] && [ "$GITHUB_REF_NAME" != "$tag" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match $tag from gradle.properties"; exit 1
+          fi
+          if ! git ls-remote --exit-code --tags origin "refs/tags/$tag" > /dev/null; then
+            echo "::error::Tag $tag does not exist; its message is the changelog"; exit 1
+          fi
+          if [ "$TARGET" != "modrinth" ]; then
+            [ -n "$(prop curseforge_project_id)" ] || { echo "::error::curseforge_project_id is blank in gradle.properties"; exit 1; }
+            [ -n "$CURSEFORGE_TOKEN" ] || { echo "::error::CURSEFORGE_TOKEN repository secret is not set"; exit 1; }
+          fi
+          if [ "$TARGET" != "curseforge" ]; then
+            [ -n "$(prop modrinth_project_id)" ] || { echo "::error::modrinth_project_id is blank in gradle.properties"; exit 1; }
+            [ -n "$MODRINTH_TOKEN" ] || { echo "::error::MODRINTH_TOKEN repository secret is not set"; exit 1; }
+          fi
+          echo "RELEASE_TAG=$tag" >> "$GITHUB_ENV"
+
+      - name: Read changelog from the tag
+        run: |
+          git fetch --force origin "refs/tags/$RELEASE_TAG:refs/tags/$RELEASE_TAG"
+          {
+            echo 'CHANGELOG<<CHANGELOG_EOF'
+            git tag -l --format='%(contents:subject)%0a%0a%(contents:body)' "$RELEASE_TAG"
+            echo 'CHANGELOG_EOF'
+          } >> "$GITHUB_ENV"
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - uses: gradle/actions/setup-gradle@v6
+
+      - name: Publish
+        env:
+          CURSEFORGE_TOKEN: ${{ env.TARGET != 'modrinth' && secrets.CURSEFORGE_TOKEN || '' }}
+          MODRINTH_TOKEN: ${{ env.TARGET != 'curseforge' && secrets.MODRINTH_TOKEN || '' }}
+        run: |
+          case "$TARGET" in
+            modrinth)   task=publishModrinth ;;
+            curseforge) task=publishCurseforge ;;
+            *)          task=publishMods ;;
+          esac
+          ./gradlew "$task"

@@ -1,0 +1,85 @@
+name: Build and test
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  workflow_dispatch:
+  # release.yml runs the full matrix before publishing.
+  workflow_call:
+
+# GameTests and client tests use neoforge-mod-test-harness, checked out into ./harness.
+env:
+  MOD_TEST_HARNESS_DIR: harness
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # No optional mods: the configuration every player has. Required by the standalone-first rule.
+          - setup: standalone
+            flag: -Pstandalone
+            client: true
+          # JEI + Jade, the integrations the mod plans to support.
+          - setup: integrations
+            flag: ''
+            client: true
+          # Pack-maker scenario: CraftTweaker loads with a sample script (server side only).
+          - setup: crafttweaker
+            flag: -Pcrafttweaker
+            client: false
+    name: test (${{ matrix.setup }})
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/checkout@v7
+        with:
+          repository: peterbax117/neoforge-mod-test-harness
+          path: harness
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - uses: gradle/actions/setup-gradle@v6
+
+      - name: Build
+        run: ./gradlew build
+
+      - name: Run GameTests
+        run: ./gradlew runGameTestServer ${{ matrix.flag }}
+
+      - name: Install virtual display
+        if: matrix.client
+        run: sudo apt-get update && sudo apt-get install -y xvfb libgl1-mesa-dri
+
+      - name: Run client tests
+        if: matrix.client
+        run: xvfb-run -a -s "-screen 0 1280x720x24" ./gradlew clientTest ${{ matrix.flag }}
+
+      - if: always() && matrix.client
+        uses: actions/upload-artifact@v7
+        with:
+          name: client-test-report-${{ matrix.setup }}
+          path: |
+            build/clienttest/report.txt
+            run/clienttest/logs/latest.log
+
+      - if: matrix.setup == 'standalone'
+        uses: actions/upload-artifact@v7
+        with:
+          name: tunnelrats_tools
+          path: build/libs/*.jar
+
+      # Recipe and GUI images for listing pages, from the configuration every player has. None exist yet.
+      - if: matrix.setup == 'standalone'
+        uses: actions/upload-artifact@v7
+        with:
+          name: screenshots
+          path: build/screenshots/
+          if-no-files-found: ignore
